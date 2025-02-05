@@ -85,7 +85,7 @@ def fetch_emails(username, password):
     """
     imap = imaplib.IMAP4_SSL('imap.gmail.com')
     imap.login(username, password)
-    imap.select("inbox")
+    imap.select("[Gmail]/Spam")
     status, messages = imap.search(None, "ALL")
     email_ids = messages[0].split()
     emails = []
