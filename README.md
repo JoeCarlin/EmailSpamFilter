@@ -10,8 +10,9 @@ The goal of this project is to develop an effective email spam filter specifical
 
 ### Step 1: Import Libraries and Necessary Packages
 
-##python
+### Step 2: app password, to create one follow this link:https://support.google.com/accounts/answer/185833
 
+```python
 import imaplib
 import email
 import re
@@ -20,7 +21,6 @@ import string
 import hashlib
 import ssl
 import socket
-
 ### Step 2: Login with gmail
 
 
