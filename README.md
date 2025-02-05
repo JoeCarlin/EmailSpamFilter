@@ -10,7 +10,8 @@ The goal of this project is to develop an effective email spam filter specifical
 
 ### Step 1: Import Libraries and Necessary Packages
 
-```python
+##python
+
 import imaplib
 import email
 import re
