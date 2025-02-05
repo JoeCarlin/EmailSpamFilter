@@ -21,9 +21,8 @@ import string
 import hashlib
 import ssl
 import socket
-### Step 2: Login with gmail
 
-
+# Step 2: Login with gmail
 # create an IMAP4_SSL class instance
 imap = imaplib.IMAP4_SSL("imap.gmail.com")
 
@@ -33,8 +32,7 @@ password = "AppPassword" #should be an app password, to create one follow this l
 imap.login(username, password)
 
 
-###Step #3: Load Emails
-
+# Step 3: Load Emails
 for i in imap.list()[1]:
     l = i.decode().split(' "/" ')
     print(l[0] + " = " + l[1])
