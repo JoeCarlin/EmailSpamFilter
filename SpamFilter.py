@@ -105,7 +105,7 @@ def fetch_emails(username, password, mailbox="[Gmail]/Spam"):
     emails = []
     
     # Fetch the last 100 emails
-    for email_id in email_ids[-40:]:
+    for email_id in email_ids[-50:]:
         status, msg_data = imap.fetch(email_id, "(RFC822)")
         for response_part in msg_data:
             if isinstance(response_part, tuple):
@@ -146,6 +146,10 @@ def classify_emails(username, password, spam_hashes, output_csv):
     """
     emails = fetch_emails(username, password)
     
+    not_spam_count = 0
+    spam_count = 0
+    threats_count = 0
+    
     with open(output_csv, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         
@@ -158,6 +162,7 @@ def classify_emails(username, password, spam_hashes, output_csv):
                 links = extract_links(body)
                 if all(is_trustworthy_link(link) for link in links) and has_unsubscribe_link(body):
                     writer.writerow([subject, from_])
+                    not_spam_count += 1
         
         # Write Spam section
         writer.writerow([])
@@ -167,6 +172,7 @@ def classify_emails(username, password, spam_hashes, output_csv):
             email_hash = generate_email_hash(body)
             if is_known_spam(email_hash, spam_hashes) or any(not is_trustworthy_link(link) for link in extract_links(body)) or not has_unsubscribe_link(body):
                 writer.writerow([subject, from_])
+                spam_count += 1
         
         # Write Threats section
         writer.writerow([])
@@ -175,6 +181,14 @@ def classify_emails(username, password, spam_hashes, output_csv):
         for subject, from_, body in emails:
             if contains_threat_keywords(body):
                 writer.writerow([subject, from_])
+                threats_count += 1
+        
+        # Write counts
+        writer.writerow([])
+        writer.writerow(["Counts"])
+        writer.writerow(["Not Spam", not_spam_count])
+        writer.writerow(["Spam", spam_count])
+        writer.writerow(["Threats", threats_count])
 
 if __name__ == "__main__":
     username = 'joecarlin30@gmail.com'
