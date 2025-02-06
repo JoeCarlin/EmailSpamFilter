@@ -105,14 +105,17 @@ def fetch_emails(username, password, mailbox="[Gmail]/Spam"):
     emails = []
     
     # Fetch the last 100 emails
-    for email_id in email_ids[-50:]:
+    for email_id in email_ids[-100:]:
         status, msg_data = imap.fetch(email_id, "(RFC822)")
         for response_part in msg_data:
             if isinstance(response_part, tuple):
                 msg = email.message_from_bytes(response_part[1])
                 subject, encoding = decode_header(msg["Subject"])[0]
                 if isinstance(subject, bytes):
-                    subject = subject.decode(encoding if encoding else "utf-8")
+                    if encoding == 'unknown-8bit':
+                        subject = subject.decode('latin1')
+                    else:
+                        subject = subject.decode(encoding if encoding else "utf-8")
                 from_ = msg.get("From")
                 if msg.is_multipart():
                     for part in msg.walk():
