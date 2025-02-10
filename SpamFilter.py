@@ -194,8 +194,8 @@ def classify_emails(username, password, spam_hashes, output_csv):
         writer.writerow(["Threats", threats_count])
 
 if __name__ == "__main__":
-    username = 'joecarlin30@gmail.com'
-    password = 'xvzc uxri rdfv msvg'
+    username = 'example@example.com'
+    password = 'AppPassword'
     spam_hashes = set()  # Add known spam hashes here
     output_csv = 'emails.csv'
     classify_emails(username, password, spam_hashes, output_csv)
