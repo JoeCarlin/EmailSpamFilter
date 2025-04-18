@@ -5,6 +5,10 @@ import csv
 from email.header import decode_header
 from bs4 import BeautifulSoup
 import requests
+import logging
+
+# Set up logging for better debugging and progress tracking
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def generate_email_hash(email_content):
     """
@@ -60,6 +64,37 @@ def is_trustworthy_link(link):
     except requests.RequestException:
         return False
 
+def link_analysis_score(links):
+    """
+    Score email based on the ratio of trustworthy links.
+
+    Args:
+        links (list): List of URLs.
+
+    Returns:
+        float: Ratio of trustworthy links (0 to 1).
+    """
+    if not links:
+        return 1.0  # No links = no threat
+    good_links = sum(is_trustworthy_link(link) for link in links)
+    return good_links / len(links)
+
+def smart_unsubscribe_check(email_content):
+    """
+    Look for actual unsubscribe links (not just the word).
+    
+    Args:
+        email_content (str): The HTML content of the email.
+    
+    Returns:
+        bool: True if an unsubscribe link is found.
+    """
+    soup = BeautifulSoup(email_content, "html.parser")
+    for a in soup.find_all("a", href=True):
+        if "unsubscribe" in a.text.lower() or "unsubscribe" in a['href'].lower():
+            return True
+    return False
+
 def has_unsubscribe_link(email_content):
     """
     Check if the email content contains an unsubscribe link.
@@ -70,7 +105,7 @@ def has_unsubscribe_link(email_content):
     Returns:
         bool: True if the email contains an unsubscribe link, False otherwise.
     """
-    return "unsubscribe" in email_content.lower()
+    return smart_unsubscribe_check(email_content)
 
 def contains_threat_keywords(email_content):
     """
@@ -105,17 +140,21 @@ def fetch_emails(username, password, mailbox="[Gmail]/Spam"):
     emails = []
     
     # Fetch the last 100 emails
-    for email_id in email_ids[-100:]:
+    for email_id in email_ids[-50:]:
         status, msg_data = imap.fetch(email_id, "(RFC822)")
         for response_part in msg_data:
             if isinstance(response_part, tuple):
                 msg = email.message_from_bytes(response_part[1])
-                subject, encoding = decode_header(msg["Subject"])[0]
-                if isinstance(subject, bytes):
-                    if encoding == 'unknown-8bit':
-                        subject = subject.decode('latin1')
-                    else:
-                        subject = subject.decode(encoding if encoding else "utf-8")
+                subject = msg["Subject"]
+                if subject is None:
+                    subject = "No Subject"
+                else:
+                    subject, encoding = decode_header(subject)[0]
+                    if isinstance(subject, bytes):
+                        if encoding == 'unknown-8bit':
+                            subject = subject.decode('latin1')
+                        else:
+                            subject = subject.decode(encoding if encoding else "utf-8")
                 from_ = msg.get("From")
                 if msg.is_multipart():
                     for part in msg.walk():
@@ -136,7 +175,7 @@ def fetch_emails(username, password, mailbox="[Gmail]/Spam"):
     imap.close()
     imap.logout()
     return emails
-
+    
 def classify_emails(username, password, spam_hashes, output_csv):
     """
     Classify emails into Not Spam, Spam, and Threats categories and write to a CSV file.
@@ -147,6 +186,7 @@ def classify_emails(username, password, spam_hashes, output_csv):
         spam_hashes (set): A set of known spam hashes.
         output_csv (str): The path to the output CSV file.
     """
+    logging.info("Fetching emails for classification...")
     emails = fetch_emails(username, password)
     
     not_spam_count = 0
@@ -163,7 +203,8 @@ def classify_emails(username, password, spam_hashes, output_csv):
             email_hash = generate_email_hash(body)
             if not is_known_spam(email_hash, spam_hashes):
                 links = extract_links(body)
-                if all(is_trustworthy_link(link) for link in links) and has_unsubscribe_link(body):
+                link_score = link_analysis_score(links)
+                if link_score > 0.7 and has_unsubscribe_link(body):  # Updated threshold
                     writer.writerow([subject, from_])
                     not_spam_count += 1
         
@@ -173,7 +214,7 @@ def classify_emails(username, password, spam_hashes, output_csv):
         writer.writerow(["Subject", "From"])
         for subject, from_, body in emails:
             email_hash = generate_email_hash(body)
-            if is_known_spam(email_hash, spam_hashes) or any(not is_trustworthy_link(link) for link in extract_links(body)) or not has_unsubscribe_link(body):
+            if is_known_spam(email_hash, spam_hashes) or link_analysis_score(extract_links(body)) < 0.5 or not has_unsubscribe_link(body):
                 writer.writerow([subject, from_])
                 spam_count += 1
         
@@ -192,10 +233,12 @@ def classify_emails(username, password, spam_hashes, output_csv):
         writer.writerow(["Not Spam", not_spam_count])
         writer.writerow(["Spam", spam_count])
         writer.writerow(["Threats", threats_count])
+        
+    logging.info("Classification complete. Output written to: " + output_csv)
 
 if __name__ == "__main__":
-    username = 'example@example.com'
-    password = 'AppPassword'
+    username = 'JoeCarlin30@gmail.com'  # Replace with your email address
+    password = 'xvzc uxri rdfv msvg'  # Replace with your app-specific password in order to connect
     spam_hashes = set()  # Add known spam hashes here
     output_csv = 'emails.csv'
     classify_emails(username, password, spam_hashes, output_csv)
